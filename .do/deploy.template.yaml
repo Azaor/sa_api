@@ -1,0 +1,23 @@
+services:
+  - name: speech_analytics
+    environment_slug: "container"
+    github:
+      branch: "main"
+      repo: "Azaor/sa_api"
+    dockerfile_path: "../deployment/Dockerfile.app"
+    http_port: 3000
+    routes:
+      - path: "/api"
+    health_check:
+      path: "/api/health"
+    instance_size_slug: "basic-xxs"
+    instance_count: 1
+    envs: # Ajout des variables d'environnement
+      - key: "DATABASE_URL" # Exemple de variable pour activer les logs
+        value: "@secrets.DATABASE_URL"
+      - key: "KEYCLOAK_CERTS_URL"
+        value: "@secrets.KEYCLOAK_CERTS_URL"
+
+static_sites: []
+
+databases: []

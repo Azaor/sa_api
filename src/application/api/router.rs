@@ -3,30 +3,25 @@ use std::{collections::HashMap, io::Error, net::SocketAddr, str::FromStr};
 use bytes::Bytes;
 use http_body_util::{BodyExt, Full};
 use hyper::{
-    body::{self, Body, Buf},
-    header::{
-        self, HeaderValue, ACCESS_CONTROL_ALLOW_HEADERS, ACCESS_CONTROL_ALLOW_METHODS,
-        ACCESS_CONTROL_ALLOW_ORIGIN, AUTHORIZATION,
-    },
+    body::{self, Buf},
+    header::{self, HeaderValue, AUTHORIZATION},
     server::conn::http1,
-    Method, Request, Response, StatusCode,
+    Method, Request, Response,
 };
 use hyper_util::{rt::TokioIo, service::TowerToHyperService};
 use jsonwebtoken::{decode_header, Algorithm, DecodingKey, Validation};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
+use serde_json::Value;
 use tokio::net::TcpListener;
 use tower::ServiceBuilder;
 use tower_http::cors::{AllowOrigin, CorsLayer};
 
 use crate::{
-    application::api::{person::person_router, speech::speech_router, token::Permissions},
+    application::api::{person::person_router, speech::speech_router},
     domain::{person::PersonManager, speech::manager::SpeechManager},
 };
 
-use super::{
-    keycloak::get_keycloak_keys,
-    token::{self, AuthToken},
-};
+use super::{keycloak::get_keycloak_keys, token::AuthToken};
 
 type BoxBody = http_body_util::combinators::BoxBody<Bytes, hyper::Error>;
 
@@ -226,6 +221,7 @@ async fn route_requests(
                     )
                     .await
                 }
+                "health" => Ok(Value::Null),
                 _ => return Err(APIError::RequestError(NOT_FOUND_ERROR)),
             }
         }
