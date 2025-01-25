@@ -1,0 +1,41 @@
+name: Build & Deploy to DigitalOcean
+
+on:
+  workflow_dispatch: # Déclencher uniquement sur la branche principale
+    inputs:
+      tag_name:
+        description: "Tag to use for the Docker image"
+        required: true
+        default: "latest"
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker Image
+        run: |
+          docker build -t speech_analytics_api:${{ github.event.inputs.tag_name }} ./deployment/Dockerfile.app
+
+      - name: Install doctl (DigitalOcean CLI)
+        run: |
+          sudo snap install doctl
+
+      - name: Authenticate with DigitalOcean
+        env:
+          DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+        run: |
+          doctl auth init -t "$DIGITALOCEAN_ACCESS_TOKEN"
+
+      - name: Login to Registry
+        env:
+          DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+        run: |
+          doctl registry login
+
+      - name: Push Docker Image
+        run: |
+          docker tag speech_analytics_api:${{ github.event.inputs.tag_name }} registry.digitalocean.com/speech-analytics/speech_analytics_api:${{ github.event.inputs.tag_name }}
+          docker push registry.digitalocean.com/speech-analytics/speech_analytics_api:${{ github.event.inputs.tag_name }}
