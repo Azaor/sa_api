@@ -15,9 +15,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      #- name: Build Docker Image
-      #  run: |
-      #    docker build -t speech_analytics_api:${{ github.event.inputs.tag_name }} -f ./deployment/Dockerfile.app .
+      - name: Build Docker Image
+        run: |
+          docker build -t speech_analytics_api:${{ github.event.inputs.tag_name }} -f ./deployment/Dockerfile.app .
 
       - name: Install doctl (DigitalOcean CLI)
         run: |
