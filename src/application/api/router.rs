@@ -58,6 +58,8 @@ pub const ACCESS_DENIED_ERROR: HttpError = HttpError {
     error: "AccessDenied",
     details: "You cannot access to this ressource",
 };
+
+#[derive(Debug)]
 pub enum APIError {
     ConfigurationError(String),
     RequestError(HttpError<'static>),

@@ -57,10 +57,11 @@ impl TryFrom<PgRow> for Sentence {
 #[derive(Debug, Clone)]
 pub struct PostgresSpeechRepository {
     url: String,
+    timeout: u64,
 }
 
-async fn init_table_async(url: &str) -> Result<(), SpeechRepositoryError> {
-    let connection = time::timeout(Duration::from_millis(100), PgPool::connect(url))
+async fn init_table_async(url: &str, timeout: u64) -> Result<(), SpeechRepositoryError> {
+    let connection = time::timeout(Duration::from_millis(timeout), PgPool::connect(url))
         .await
         .map_err(|e| SpeechRepositoryError::InternalError(e.to_string()))??;
     let create_speech_table_query = r#"CREATE TABLE IF NOT EXISTS speech (
@@ -72,7 +73,7 @@ async fn init_table_async(url: &str) -> Result<(), SpeechRepositoryError> {
         CONSTRAINT unique_speech UNIQUE (name, date, media)
     )"#;
     let _result = time::timeout(
-        Duration::from_millis(100),
+        Duration::from_millis(timeout),
         sqlx::query(&create_speech_table_query).execute(&connection),
     )
     .await
@@ -88,7 +89,7 @@ async fn init_table_async(url: &str) -> Result<(), SpeechRepositoryError> {
         CONSTRAINT FK_SentencePerson FOREIGN KEY (speaker) REFERENCES person(uid)
     )"#;
     let _result = time::timeout(
-        Duration::from_millis(100),
+        Duration::from_millis(timeout),
         sqlx::query(&create_speech_table_query).execute(&connection),
     )
     .await
@@ -100,7 +101,7 @@ async fn init_table_async(url: &str) -> Result<(), SpeechRepositoryError> {
         CONSTRAINT FK_SentencePerson FOREIGN KEY (speaker) REFERENCES person(uid)
     )"#;
     let _result = time::timeout(
-        Duration::from_millis(100),
+        Duration::from_millis(timeout),
         sqlx::query(&create_speech_person_table_query).execute(&connection),
     )
     .await
@@ -109,10 +110,11 @@ async fn init_table_async(url: &str) -> Result<(), SpeechRepositoryError> {
 }
 
 impl PostgresSpeechRepository {
-    pub async fn new(url: &str) -> Result<Self, SpeechRepositoryError> {
-        init_table_async(url).await?;
+    pub async fn new(url: &str, timeout: u64) -> Result<Self, SpeechRepositoryError> {
+        init_table_async(url, timeout).await?;
         Ok(Self {
             url: url.to_string(),
+            timeout: timeout,
         })
     }
 }
@@ -123,9 +125,12 @@ impl SpeechRepository for PostgresSpeechRepository {
         &self,
         speech: &domain::speech::Speech,
     ) -> Result<(), SpeechRepositoryError> {
-        let connection = time::timeout(Duration::from_millis(100), PgPool::connect(&self.url))
-            .await
-            .map_err(|e| SpeechRepositoryError::InternalError(e.to_string()))??;
+        let connection = time::timeout(
+            Duration::from_millis(self.timeout),
+            PgPool::connect(&self.url),
+        )
+        .await
+        .map_err(|e| SpeechRepositoryError::InternalError(e.to_string()))??;
 
         let mut tx = connection.begin().await?;
         let create_speech_query = format!(
@@ -137,7 +142,7 @@ impl SpeechRepository for PostgresSpeechRepository {
             speech.speech_status()
         );
         let result = time::timeout(
-            Duration::from_millis(100),
+            Duration::from_millis(self.timeout),
             sqlx::query(&create_speech_query).execute(&mut *tx),
         )
         .await;
@@ -154,7 +159,7 @@ impl SpeechRepository for PostgresSpeechRepository {
         }
         for speaker in speech.speakers() {
             let result = time::timeout(
-                Duration::from_millis(100),
+                Duration::from_millis(self.timeout),
                 sqlx::query("INSERT INTO speech_person VALUES ($1, $2);")
                     .bind(speech.uid().to_string())
                     .bind(speaker.to_string())
@@ -175,7 +180,7 @@ impl SpeechRepository for PostgresSpeechRepository {
         }
         for (idx, sentence) in speech.sentences().iter().enumerate() {
             let result = time::timeout(
-                Duration::from_millis(100),
+                Duration::from_millis(self.timeout),
                 sqlx::query("INSERT INTO sentence VALUES ($1, $2, $3, $4, $5, $6)")
                     .bind(sentence.uid().to_string())
                     .bind(speech.uid().to_string())
@@ -203,12 +208,15 @@ impl SpeechRepository for PostgresSpeechRepository {
     }
 
     async fn get_speech_by_id(&self, uid: Uuid) -> Result<Speech, SpeechRepositoryError> {
-        let connection = time::timeout(Duration::from_millis(100), PgPool::connect(&self.url))
-            .await
-            .map_err(|e| SpeechRepositoryError::InternalError(e.to_string()))??;
+        let connection = time::timeout(
+            Duration::from_millis(self.timeout),
+            PgPool::connect(&self.url),
+        )
+        .await
+        .map_err(|e| SpeechRepositoryError::InternalError(e.to_string()))??;
 
         let speech_result = time::timeout(
-            Duration::from_millis(100),
+            Duration::from_millis(self.timeout),
             sqlx::query("SELECT uid, name, date, media FROM speech WHERE uid = $1;")
                 .bind(uid.to_string())
                 .fetch_one(&connection),
@@ -216,7 +224,7 @@ impl SpeechRepository for PostgresSpeechRepository {
         .await
         .map_err(|e| SpeechRepositoryError::InternalError(e.to_string()))??;
         let sentences_result = time::timeout(
-            Duration::from_millis(100),
+            Duration::from_millis(self.timeout),
             sqlx::query("SELECT uid, speech_uid, speaker, text, interrupted, index, status FROM sentence WHERE speech_uid = $1 ORDER BY index;").bind(uid.to_string()).fetch_all(&connection),
         )
         .await
@@ -227,7 +235,7 @@ impl SpeechRepository for PostgresSpeechRepository {
         }
 
         let speech_person_result = time::timeout(
-            Duration::from_millis(100),
+            Duration::from_millis(self.timeout),
             sqlx::query("SELECT speech_uid, speaker FROM speech_person WHERE speech_uid = $1;")
                 .bind(uid.to_string())
                 .fetch_all(&connection),
@@ -261,12 +269,15 @@ impl SpeechRepository for PostgresSpeechRepository {
         ));
     }
     async fn delete_speech(&self, uid: Uuid) -> Result<(), SpeechRepositoryError> {
-        let connection = time::timeout(Duration::from_millis(100), PgPool::connect(&self.url))
-            .await
-            .map_err(|e| SpeechRepositoryError::InternalError(e.to_string()))??;
+        let connection = time::timeout(
+            Duration::from_millis(self.timeout),
+            PgPool::connect(&self.url),
+        )
+        .await
+        .map_err(|e| SpeechRepositoryError::InternalError(e.to_string()))??;
         let mut tx = connection.begin().await?;
         let speech_person_result = time::timeout(
-            Duration::from_millis(100),
+            Duration::from_millis(self.timeout),
             sqlx::query("DELETE FROM speech_person WHERE speech_uid = $1;")
                 .bind(uid.to_string())
                 .execute(&mut *tx),
@@ -285,7 +296,7 @@ impl SpeechRepository for PostgresSpeechRepository {
             return Err(speech_person_result.map_err(|e| e.into()).unwrap_err());
         }
         let sentences_result = time::timeout(
-            Duration::from_millis(100),
+            Duration::from_millis(self.timeout),
             sqlx::query("DELETE FROM sentence WHERE speech_uid = $1;")
                 .bind(uid.to_string())
                 .execute(&mut *tx),
@@ -304,7 +315,7 @@ impl SpeechRepository for PostgresSpeechRepository {
             return Err(sentences_result.map_err(|e| e.into()).unwrap_err());
         }
         let speech_result = time::timeout(
-            Duration::from_millis(100),
+            Duration::from_millis(self.timeout),
             sqlx::query("DELETE FROM speech WHERE uid = $1;")
                 .bind(uid.to_string())
                 .execute(&mut *tx),
@@ -347,16 +358,19 @@ impl PostgresSpeechRepository {
         quantity: u16,
         speakers_id: &[Uuid],
     ) -> Result<Vec<Speech>, SpeechRepositoryError> {
-        let connection = time::timeout(Duration::from_millis(100), PgPool::connect(&self.url))
-            .await
-            .map_err(|e| SpeechRepositoryError::InternalError(e.to_string()))??;
+        let connection = time::timeout(
+            Duration::from_millis(self.timeout),
+            PgPool::connect(&self.url),
+        )
+        .await
+        .map_err(|e| SpeechRepositoryError::InternalError(e.to_string()))??;
 
         let list_speakers_id = speakers_id
             .iter()
             .map(|id| id.to_string())
             .collect::<Vec<String>>();
         let speech_person_result = time::timeout(
-            Duration::from_millis(100),
+            Duration::from_millis(self.timeout),
             sqlx::query(
                 "SELECT speech_uid FROM speech_person WHERE speaker = ANY($1) LIMIT $2 OFFSET $3;",
             )
@@ -378,7 +392,7 @@ impl PostgresSpeechRepository {
             .collect::<Vec<String>>();
 
         let speech_result = time::timeout(
-            Duration::from_millis(100),
+            Duration::from_millis(self.timeout),
             sqlx::query("SELECT uid, name, date, media, status FROM speech WHERE uid = ANY($1);")
                 .bind(list_uid)
                 .fetch_all(&connection),
@@ -414,7 +428,7 @@ impl PostgresSpeechRepository {
             .collect::<Vec<String>>();
 
         let speech_person_result = time::timeout(
-            Duration::from_millis(100),
+            Duration::from_millis(self.timeout),
             sqlx::query(
                 "SELECT speech_uid, speaker FROM speech_person WHERE speech_uid = ANY($1);",
             )
@@ -453,12 +467,15 @@ impl PostgresSpeechRepository {
         page: u16,
         quantity: u16,
     ) -> Result<Vec<Speech>, SpeechRepositoryError> {
-        let connection = time::timeout(Duration::from_millis(100), PgPool::connect(&self.url))
-            .await
-            .map_err(|e| SpeechRepositoryError::InternalError(e.to_string()))??;
+        let connection = time::timeout(
+            Duration::from_millis(self.timeout),
+            PgPool::connect(&self.url),
+        )
+        .await
+        .map_err(|e| SpeechRepositoryError::InternalError(e.to_string()))??;
 
         let speech_result = time::timeout(
-            Duration::from_millis(100),
+            Duration::from_millis(self.timeout),
             sqlx::query("SELECT uid, name, date, media FROM speech LIMIT $1 OFFSET $2;")
                 .bind(quantity as i32)
                 .bind((page * quantity) as i32)
@@ -496,7 +513,7 @@ impl PostgresSpeechRepository {
             .collect::<Vec<String>>();
 
         let speech_person_result = time::timeout(
-            Duration::from_millis(100),
+            Duration::from_millis(self.timeout),
             sqlx::query(
                 "SELECT speech_uid, speaker FROM speech_person WHERE speech_uid = ANY($1);",
             )
@@ -547,6 +564,7 @@ pub mod tests {
     async fn test_postgres_speech_in_db() {
         let res = PostgresSpeechRepository::new(
             "postgres://postgres:postgres@localhost/speech_analytics",
+            100,
         )
         .await;
         println!("{:?}", res);

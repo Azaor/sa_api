@@ -50,10 +50,11 @@ impl TryFrom<PgRow> for Person {
 #[derive(Debug, Clone)]
 pub struct PostgresPersonRepository {
     url: String,
+    timeout: u64,
 }
 
-async fn init_table_async(url: &str) -> Result<(), PersonRepositoryError> {
-    let connection = time::timeout(Duration::from_millis(100), PgPool::connect(url))
+async fn init_table_async(url: &str, timeout: u64) -> Result<(), PersonRepositoryError> {
+    let connection = time::timeout(Duration::from_millis(timeout), PgPool::connect(url))
         .await
         .map_err(|e| PersonRepositoryError::InternalError(e.to_string()))??;
     let create_table_query = r#"CREATE TABLE IF NOT EXISTS person (
@@ -66,7 +67,7 @@ async fn init_table_async(url: &str) -> Result<(), PersonRepositoryError> {
         CONSTRAINT unique_identity UNIQUE (name, first_name, birth_date)
     )"#;
     let _result = time::timeout(
-        Duration::from_millis(100),
+        Duration::from_millis(timeout),
         sqlx::query(create_table_query).execute(&connection),
     )
     .await
@@ -75,11 +76,11 @@ async fn init_table_async(url: &str) -> Result<(), PersonRepositoryError> {
 }
 
 impl PostgresPersonRepository {
-    pub fn new(url: &str) -> Result<Self, PersonRepositoryError> {
-        let rt = Runtime::new().map_err(|e| PersonRepositoryError::InternalError(e.to_string()))?;
-        rt.block_on(init_table_async(url))?;
+    pub async fn new(url: &str, timeout: u64) -> Result<Self, PersonRepositoryError> {
+        init_table_async(url, timeout).await?;
         Ok(Self {
             url: url.to_string(),
+            timeout,
         })
     }
 }
@@ -87,11 +88,14 @@ impl PostgresPersonRepository {
 #[async_trait::async_trait]
 impl PersonRepository for PostgresPersonRepository {
     async fn create_person(&self, person: &Person) -> Result<(), PersonRepositoryError> {
-        let connection = time::timeout(Duration::from_millis(100), PgPool::connect(&self.url))
-            .await
-            .map_err(|e| PersonRepositoryError::InternalError(e.to_string()))??;
+        let connection = time::timeout(
+            Duration::from_millis(self.timeout),
+            PgPool::connect(&self.url),
+        )
+        .await
+        .map_err(|e| PersonRepositoryError::InternalError(e.to_string()))??;
         let _result = time::timeout(
-            Duration::from_millis(100),
+            Duration::from_millis(self.timeout),
             sqlx::query("INSERT INTO person VALUES ($1, $2, $3, $4, $5, $6);")
                 .bind(person.uid().to_string())
                 .bind(person.name())
@@ -111,12 +115,14 @@ impl PersonRepository for PostgresPersonRepository {
     }
 
     async fn get_person_by_id(&self, uid: &Uuid) -> Result<Person, PersonRepositoryError> {
-        let connection: sqlx::Pool<sqlx::Postgres> =
-            time::timeout(Duration::from_millis(100), PgPool::connect(&self.url))
-                .await
-                .map_err(|e| PersonRepositoryError::InternalError(e.to_string()))??;
+        let connection: sqlx::Pool<sqlx::Postgres> = time::timeout(
+            Duration::from_millis(self.timeout),
+            PgPool::connect(&self.url),
+        )
+        .await
+        .map_err(|e| PersonRepositoryError::InternalError(e.to_string()))??;
         let person_found = time::timeout(
-            Duration::from_millis(100),
+            Duration::from_millis(self.timeout),
             sqlx::query("SELECT uid, name, first_name, birth_date, trust_score, lie_quantity FROM person WHERE uid = $1;").bind(uid.to_string()).fetch_one(&connection),
         )
         .await
@@ -129,12 +135,14 @@ impl PersonRepository for PostgresPersonRepository {
         page: u16,
         quantity: u16,
     ) -> Result<Vec<Person>, PersonRepositoryError> {
-        let connection: sqlx::Pool<sqlx::Postgres> =
-            time::timeout(Duration::from_millis(100), PgPool::connect(&self.url))
-                .await
-                .map_err(|e| PersonRepositoryError::InternalError(e.to_string()))??;
+        let connection: sqlx::Pool<sqlx::Postgres> = time::timeout(
+            Duration::from_millis(self.timeout),
+            PgPool::connect(&self.url),
+        )
+        .await
+        .map_err(|e| PersonRepositoryError::InternalError(e.to_string()))??;
         let result = time::timeout(
-            Duration::from_millis(100),
+            Duration::from_millis(self.timeout),
             sqlx::query("SELECT uid, name, first_name, birth_date, trust_score, lie_quantity FROM person LIMIT $1 OFFSET $2;").bind(quantity as i32).bind((page*quantity) as i32).fetch_all(&connection),
         )
         .await
@@ -149,12 +157,14 @@ impl PersonRepository for PostgresPersonRepository {
     }
 
     async fn delete_person(&self, uid: &Uuid) -> Result<(), PersonRepositoryError> {
-        let connection: sqlx::Pool<sqlx::Postgres> =
-            time::timeout(Duration::from_millis(100), PgPool::connect(&self.url))
-                .await
-                .map_err(|e| PersonRepositoryError::InternalError(e.to_string()))??;
+        let connection: sqlx::Pool<sqlx::Postgres> = time::timeout(
+            Duration::from_millis(self.timeout),
+            PgPool::connect(&self.url),
+        )
+        .await
+        .map_err(|e| PersonRepositoryError::InternalError(e.to_string()))??;
         time::timeout(
-            Duration::from_millis(100),
+            Duration::from_millis(self.timeout),
             sqlx::query("DELETE FROM person WHERE uid = $1")
                 .bind(uid.to_string())
                 .execute(&connection),
@@ -179,7 +189,9 @@ pub mod tests {
     async fn test_postgres_person_in_db() {
         let res = PostgresPersonRepository::new(
             "postgres://postgres:postgres@localhost/speech_analytics",
-        );
+            100,
+        )
+        .await;
         assert_eq!(res.is_ok(), true);
         let repository = res.unwrap();
         let person_uid = Uuid::from_str("9c01cccd-919b-4c59-84c7-4fef627557b9").unwrap();
