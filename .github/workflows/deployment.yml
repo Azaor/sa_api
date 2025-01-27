@@ -17,7 +17,7 @@ jobs:
 
       - name: Build Docker Image
         run: |
-          docker build -t speech_analytics_api:${{ github.event.inputs.tag_name }} -f ./deployment/Dockerfile.app .
+          docker build -t speech_analytics_api:${{ github.event.inputs.tag_name }} -t speech_analytics_api:latest -f ./deployment/Dockerfile.app .
 
       - name: Install doctl (DigitalOcean CLI)
         run: |

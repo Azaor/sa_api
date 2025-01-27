@@ -11,7 +11,7 @@ RUN cargo build --release --bin speech_analytics_api
 FROM debian:bookworm-slim
 
 # Installer les dépendances nécessaires pour exécuter l'application
-RUN apt-get update && apt-get upgrade -y && apt-get install -y libssl-dev && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get upgrade -y && apt-get install -y libssl-dev ca-certificates && rm -rf /var/lib/apt/lists/*
 
 # Définir le dossier de travail
 WORKDIR /app
