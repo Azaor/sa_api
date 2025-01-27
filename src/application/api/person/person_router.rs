@@ -77,7 +77,10 @@ impl From<PersonRepositoryError> for HttpError<'static> {
                 "The person you try to create already exists.",
             ),
             PersonRepositoryError::InternalError(e) => {
-                println!("An internal error occured: {}", e);
+                println!(
+                    "An internal error occured while making an action on Persons: {}",
+                    e
+                );
                 INTERNAL_ERROR
             }
         }
@@ -143,7 +146,10 @@ pub async fn router(
                 .map(|p| GetPersonOutput::from(p))
                 .collect();
             return Ok(value::to_value(people_json).map_err(|e| {
-                println!("An internal error occured: {:?}", e);
+                println!(
+                    "An internal error occured while converting persons to value: {:?}",
+                    e
+                );
                 INTERNAL_ERROR
             })?);
         }
@@ -162,7 +168,10 @@ pub async fn router(
             let person_found: GetPersonOutput =
                 person_manager.get_person_by_id(&uid_proposed).await?.into();
             let response_body = value::to_value(person_found).map_err(|e| {
-                println!("An internal error occured : {:?}",e);
+                println!(
+                    "An internal error occured while converting person to value: {:?}",
+                    e
+                );
                 INTERNAL_ERROR
             })?;
             Ok(response_body)

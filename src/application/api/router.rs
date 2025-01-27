@@ -164,7 +164,7 @@ async fn route_requests(
         .collect()
         .await
         .map_err(|e| {
-            println!("An internal error occured: {:?}", e);
+            println!("An internal error occured while getting the body : {:?}", e);
             APIError::RequestError(INTERNAL_ERROR)
         })?
         .aggregate();
@@ -185,7 +185,7 @@ async fn route_requests(
     }
     let query_params = get_query_params_from_raw(&params);
     let keycloak_keys = get_keycloak_keys().await.map_err(|e| {
-        println!("An internal error occured: {}", e);
+        println!("An internal error occured while getting keycloak: {}", e);
         APIError::RequestError(INTERNAL_ERROR)
     })?;
     let token = extract_token(

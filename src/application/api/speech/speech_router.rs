@@ -248,7 +248,10 @@ pub async fn router(
                 .collect();
 
             Ok(value::to_value(speech).map_err(|e| {
-                println!("An internal error occured : {}", e);
+                println!(
+                    "An internal error occured while converting speeches to value: {}",
+                    e
+                );
                 INTERNAL_ERROR
             })?)
         }
@@ -265,7 +268,10 @@ pub async fn router(
             })?;
             let speech_found: GetSpeechById = speech_manager.get_speech_by_id(uid).await?.into();
             Ok(value::to_value(speech_found).map_err(|e| {
-                println!("An internal error occured : {:?}", e);
+                println!(
+                    "An internal error occured while converting speech by id: {:?}",
+                    e
+                );
                 INTERNAL_ERROR
             })?)
         }
