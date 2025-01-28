@@ -476,7 +476,7 @@ impl PostgresSpeechRepository {
 
         let speech_result = time::timeout(
             Duration::from_millis(self.timeout),
-            sqlx::query("SELECT uid, name, date, media FROM speech LIMIT $1 OFFSET $2;")
+            sqlx::query("SELECT uid, name, date, media, status FROM speech LIMIT $1 OFFSET $2;")
                 .bind(quantity as i32)
                 .bind((page * quantity) as i32)
                 .fetch_all(&connection),
