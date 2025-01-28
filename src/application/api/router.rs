@@ -1,4 +1,4 @@
-use std::{collections::HashMap, io::Error, net::SocketAddr, str::FromStr};
+use std::{collections::HashMap, io::Error, net::SocketAddr};
 
 use bytes::Bytes;
 use http_body_util::{BodyExt, Full};
@@ -276,7 +276,7 @@ fn extract_token(
     // Décoder l'en-tête du JWT pour récupérer le "kid" (Key ID)
     let header = match decode_header(token_part) {
         Ok(v) => v,
-        Err(e) => return Err(invalid_token),
+        Err(_) => return Err(invalid_token),
     };
     let kid = match header.kid {
         Some(kid) => kid,

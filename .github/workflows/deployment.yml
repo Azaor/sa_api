@@ -39,4 +39,6 @@ jobs:
       - name: Push Docker Image
         run: |
           docker tag speech_analytics_api:${{ github.event.inputs.tag_name }} registry.digitalocean.com/speech-analytics/speech_analytics_api:${{ github.event.inputs.tag_name }}
+          docker tag speech_analytics_api:latest registry.digitalocean.com/speech-analytics/speech_analytics_api:latest
           docker push registry.digitalocean.com/speech-analytics/speech_analytics_api:${{ github.event.inputs.tag_name }}
+          docker push registry.digitalocean.com/speech-analytics/speech_analytics_api:latest

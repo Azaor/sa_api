@@ -2,7 +2,7 @@ use std::{str::FromStr, time::Duration};
 
 use chrono::NaiveDate;
 use sqlx::{postgres::PgRow, Error, PgPool, Row};
-use tokio::{runtime::Runtime, time};
+use tokio::time;
 use uuid::Uuid;
 
 use crate::domain::person::{Person, PersonRepository, PersonRepositoryError};
@@ -100,7 +100,7 @@ impl PersonRepository for PostgresPersonRepository {
                 .bind(person.uid().to_string())
                 .bind(person.name())
                 .bind(person.first_name())
-                .bind(person.birth_date().to_string())
+                .bind(person.birth_date())
                 .bind(person.trust_score() as i32)
                 .bind(person.lie_quantity() as i32)
                 .execute(&connection),

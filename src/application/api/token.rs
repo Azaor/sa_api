@@ -34,39 +34,39 @@ impl FromStr for Permissions {
 
 #[derive(Debug, Deserialize)]
 pub struct AuthToken {
-    user_id: Option<String>,
-    username: Option<String>,
+    _user_id: Option<String>,
+    _username: Option<String>,
     permissions: Vec<Permissions>,
 }
 
 impl Default for AuthToken {
     fn default() -> Self {
         Self {
-            user_id: Default::default(),
-            username: Default::default(),
+            _user_id: Default::default(),
+            _username: Default::default(),
             permissions: vec![Permissions::GetPerson, Permissions::GetSpeech],
         }
     }
 }
 
 impl AuthToken {
-    pub fn new(
+    pub fn _new(
         user_id: Option<String>,
         username: Option<String>,
         permissions: Vec<Permissions>,
     ) -> Self {
         return Self {
-            user_id,
-            username,
+            _user_id: user_id,
+            _username: username,
             permissions,
         };
     }
 
-    pub fn user_id(&self) -> String {
-        return self.user_id.clone().unwrap_or("anonymous".to_owned());
+    pub fn _user_id(&self) -> String {
+        return self._user_id.clone().unwrap_or("anonymous".to_owned());
     }
-    pub fn username(&self) -> String {
-        return self.username.clone().unwrap_or("Unknown_user".to_owned());
+    pub fn _username(&self) -> String {
+        return self._username.clone().unwrap_or("Unknown_user".to_owned());
     }
     pub fn permissions(&self) -> &Vec<Permissions> {
         return &self.permissions;

@@ -18,7 +18,7 @@ impl PersonManager {
         self.repository.create_person(&person).await
     }
 
-    pub async fn update_person(&self, person: Person) -> Result<(), PersonRepositoryError> {
+    pub async fn _update_person(&self, person: Person) -> Result<(), PersonRepositoryError> {
         self.repository.update_person(&person).await
     }
 
