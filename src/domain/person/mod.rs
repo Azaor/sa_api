@@ -4,4 +4,4 @@ mod repository;
 
 pub use manager::PersonManager;
 pub use person::Person;
-pub use repository::{PersonRepository, PersonRepositoryError};
+pub use repository::{GetPeopleResponse, PersonRepository, PersonRepositoryError};

@@ -8,6 +8,11 @@ pub enum PersonRepositoryError {
     InternalError(String),
 }
 
+pub struct GetPeopleResponse {
+    pub people: Vec<Person>,
+    pub nb_person: u64,
+}
+
 #[async_trait::async_trait]
 pub trait PersonRepository: PersonClone + Send + Sync {
     async fn create_person(&self, person: &Person) -> Result<(), PersonRepositoryError>;
@@ -17,7 +22,7 @@ pub trait PersonRepository: PersonClone + Send + Sync {
         &self,
         page: u16,
         quantity: u16,
-    ) -> Result<Vec<Person>, PersonRepositoryError>;
+    ) -> Result<GetPeopleResponse, PersonRepositoryError>;
     async fn delete_person(&self, uid: &Uuid) -> Result<(), PersonRepositoryError>;
 }
 pub trait PersonClone {

@@ -1,6 +1,6 @@
 use super::{
     person::Person,
-    repository::{PersonRepository, PersonRepositoryError},
+    repository::{GetPeopleResponse, PersonRepository, PersonRepositoryError},
 };
 use uuid::Uuid;
 
@@ -30,7 +30,7 @@ impl PersonManager {
         &self,
         page: u16,
         quantity: u16,
-    ) -> Result<Vec<Person>, PersonRepositoryError> {
+    ) -> Result<GetPeopleResponse, PersonRepositoryError> {
         self.repository.get_people(page, quantity).await
     }
 

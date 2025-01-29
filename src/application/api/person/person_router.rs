@@ -45,6 +45,13 @@ impl TryFrom<CreatePersonInput> for Person {
 
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
+struct GetPeopleOutput {
+    people: Vec<GetPersonOutput>,
+    nb_person: u64,
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 struct GetPersonOutput {
     uid: String,
     name: String,
@@ -140,12 +147,17 @@ pub async fn router(
                     "The quantity parameter provided must be an integer > 0",
                 )
             })?;
-            let people = person_manager.get_people(page, quantity).await?;
-            let people_json: Vec<GetPersonOutput> = people
+            let get_people_response = person_manager.get_people(page, quantity).await?;
+            let people: Vec<GetPersonOutput> = get_people_response
+                .people
                 .into_iter()
                 .map(|p| GetPersonOutput::from(p))
                 .collect();
-            return Ok(value::to_value(people_json).map_err(|e| {
+            let json_response = GetPeopleOutput {
+                people,
+                nb_person: get_people_response.nb_person,
+            };
+            return Ok(value::to_value(json_response).map_err(|e| {
                 println!(
                     "An internal error occured while converting persons to value: {:?}",
                     e

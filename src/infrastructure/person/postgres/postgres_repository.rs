@@ -5,7 +5,7 @@ use sqlx::{postgres::PgRow, Error, PgPool, Row};
 use tokio::time;
 use uuid::Uuid;
 
-use crate::domain::person::{Person, PersonRepository, PersonRepositoryError};
+use crate::domain::person::{GetPeopleResponse, Person, PersonRepository, PersonRepositoryError};
 
 impl From<Error> for PersonRepositoryError {
     fn from(value: Error) -> Self {
@@ -134,7 +134,7 @@ impl PersonRepository for PostgresPersonRepository {
         &self,
         page: u16,
         quantity: u16,
-    ) -> Result<Vec<Person>, PersonRepositoryError> {
+    ) -> Result<GetPeopleResponse, PersonRepositoryError> {
         let connection: sqlx::Pool<sqlx::Postgres> = time::timeout(
             Duration::from_millis(self.timeout),
             PgPool::connect(&self.url),
@@ -147,13 +147,24 @@ impl PersonRepository for PostgresPersonRepository {
         )
         .await
         .map_err(|e| PersonRepositoryError::InternalError(e.to_string()))??;
-        return Ok(result.into_iter().fold(Vec::new(), |mut acc, v| {
+        let people = result.into_iter().fold(Vec::new(), |mut acc, v| {
             let convert = v.try_into();
             if convert.is_ok() {
                 acc.push(convert.unwrap());
             }
             acc
-        }));
+        });
+        let result = time::timeout(
+            Duration::from_millis(self.timeout),
+            sqlx::query("SELECT COUNT(*) AS total_count FROM person;").fetch_one(&connection),
+        )
+        .await
+        .map_err(|e| PersonRepositoryError::InternalError(e.to_string()))??;
+        let nb_person: i64 = result.get("total_count");
+        return Ok(GetPeopleResponse {
+            people,
+            nb_person: nb_person as u64,
+        });
     }
 
     async fn delete_person(&self, uid: &Uuid) -> Result<(), PersonRepositoryError> {
