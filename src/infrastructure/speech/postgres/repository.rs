@@ -217,7 +217,7 @@ impl SpeechRepository for PostgresSpeechRepository {
 
         let speech_result = time::timeout(
             Duration::from_millis(self.timeout),
-            sqlx::query("SELECT uid, name, date, media FROM speech WHERE uid = $1;")
+            sqlx::query("SELECT uid, name, date, media, status FROM speech WHERE uid = $1;")
                 .bind(uid.to_string())
                 .fetch_one(&connection),
         )
