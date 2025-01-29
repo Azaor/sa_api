@@ -225,7 +225,7 @@ impl SpeechRepository for PostgresSpeechRepository {
         .map_err(|e| SpeechRepositoryError::InternalError(e.to_string()))??;
         let sentences_result = time::timeout(
             Duration::from_millis(self.timeout),
-            sqlx::query("SELECT uid, speech_uid, speaker, text, interrupted, index, status FROM sentence WHERE speech_uid = $1 ORDER BY index;").bind(uid.to_string()).fetch_all(&connection),
+            sqlx::query("SELECT uid, speech_uid, speaker, text, interrupted, index FROM sentence WHERE speech_uid = $1 ORDER BY index;").bind(uid.to_string()).fetch_all(&connection),
         )
         .await
         .map_err(|e| SpeechRepositoryError::InternalError(e.to_string()))??;
